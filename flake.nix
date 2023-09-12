@@ -7,7 +7,24 @@
   outputs = inputs:
     with inputs; let
       inherit (self) outputs;
-      flakeDocker = flake-utils.lib.eachDefaultSystem (
+      flakeDevEnv = flake-utils.lib.eachDefaultSystem (
+        system: let
+          pkgs = import nixpkgs {
+            inherit system;
+          };
+        in {
+          formatter = pkgs.alejandra;
+          devShells.default = pkgs.mkShell {
+            packages = with pkgs; [
+              just
+              nixos-rebuild
+              qemu
+              sshpass
+            ];
+          };
+        }
+      );
+      flakeDocker = flake-utils.lib.eachSystem ["x86_64-linux"] (
         system: let
           pkgs = import nixpkgs {
             inherit system;
@@ -34,15 +51,6 @@
           };
         in {
           packages.docker = dockerImage;
-          formatter = pkgs.alejandra;
-          devShells.default = pkgs.mkShell {
-            packages = with pkgs; [
-              just
-              nixos-rebuild
-              qemu
-              sshpass
-            ];
-          };
         }
       );
       flakeModules = {
@@ -96,7 +104,7 @@
           system.stateVersion = "22.05"; # Do not change
         };
       };
-      flakeVM = flake-utils.lib.eachDefaultSystem (
+      flakeVM = flake-utils.lib.eachSystem ["x86_64-linux"] (
         system: let
           pkgs = import nixpkgs {
             inherit system;
@@ -124,6 +132,7 @@
     in
       nixpkgs.lib.foldl nixpkgs.lib.recursiveUpdate {}
       [
+        flakeDevEnv
         flakeDocker
         flakeModules
         flakeVM
