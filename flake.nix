@@ -14,7 +14,7 @@
           };
 
           dockerImage = pkgs.dockerTools.buildImage {
-            name = "enos_deployment";
+            name = "tutosed";
             tag = "latest";
             copyToRoot = pkgs.buildEnv {
               name = "image-root";
@@ -23,13 +23,13 @@
                 "/"
               ];
               paths = with pkgs; [
+                busybox
                 parallel
               ];
             };
 
             config = {
-              Env = ["RUN=python" "HOME=/root"];
-              Entrypoint = [""];
+              Entrypoint = ["sleep" "9999999"];
             };
           };
         in {
@@ -40,6 +40,7 @@
               just
               nixos-rebuild
               qemu
+              sshpass
             ];
           };
         }
@@ -63,15 +64,34 @@
             };
             loader.timeout = 0;
           };
+
+          users.mutableUsers = false;
+          users.users.root = {
+            isSystemUser = true;
+            password = "root";
+          };
+
+          services.openssh = {
+            enable = true;
+            permitRootLogin = "yes";
+          };
+
           services.k3s = {
             enable = true;
           };
-          # useful packages
-          # environment.systemPackages = with pkgs; [
-          #   faas-cli
-          #   kubectl
-          #   arkade
-          # ];
+
+          systemd.services.startTutoSEDContainer = {
+            description = "Launch our tutosed container image";
+            after = ["k3s.service"];
+            wantedBy = ["multi-user.target"];
+            script = ''
+              ${pkgs.k3s}/bin/k3s kubectl create deployment tutosed --image=ghcr.io/volodiapg/tutosed:latest
+            '';
+            serviceConfig = {
+              Type = "oneshot";
+              RemainAfterExit = "yes";
+            };
+          };
 
           system.stateVersion = "22.05"; # Do not change
         };
