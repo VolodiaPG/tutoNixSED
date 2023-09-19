@@ -64,8 +64,17 @@
           packages.kube =
             (kubenix.evalModules.${system} {
               module = {kubenix, ...}: {
-                imports = [kubenix.modules.k8s];
+                imports = [kubenix.modules.k8s kubenix.modules.helm];
+
                 kubernetes.resources.pods.example.spec.containers.nginx.image = "nginx";
+                kubernetes.helm.releases.openfaas = {
+                  chart = kubenix.lib.helm.fetch {
+                    repo = "https://openfaas.github.io/faas-netes/";
+                    chart = "openfaas";
+                    version = "14.1.9";
+                    sha256 = "sha256-KxZhrunv8DbOvFqw7p2t2Zrqm4urvFWCErsutqNUgiM=";
+                  };
+                };
               };
             })
             .config
@@ -111,9 +120,10 @@
 
           systemd.services.startTutoSEDContainer = {
             description = "Launch our tutosed container image";
-            before = ["k3s.service"];
+            after = ["k3s.service"];
             wantedBy = ["multi-user.target"];
             script = ''
+              ${pkgs.k3s}/bin/k3s kubectl apply -f /etc/namespaces.yaml
               ${pkgs.k3s}/bin/k3s kubectl apply -f /etc/kubenix.json
             '';
             serviceConfig = {
@@ -123,6 +133,32 @@
           };
 
           environment.etc."kubenix.json".source = outputs.packages.${pkgs.system}.kube;
+          environment.etc."namespaces.yaml".text = ''
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: openfaas
+            annotations:
+              linkerd.io/inject: enabled
+              config.linkerd.io/skip-inbound-ports: "4222"
+              config.linkerd.io/skip-outbound-ports: "4222"
+            labels:
+              role: openfaas-system
+              access: openfaas-system
+              istio-injection: enabled
+          ---
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: openfaas-fn
+            annotations:
+              linkerd.io/inject: enabled
+              config.linkerd.io/skip-inbound-ports: "4222"
+              config.linkerd.io/skip-outbound-ports: "4222"
+            labels:
+              istio-injection: enabled
+              role: openfaas-fn
+          '';
 
           system.stateVersion = "22.05"; # Do not change
         };
