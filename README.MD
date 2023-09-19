@@ -16,7 +16,7 @@ This tutorial works best on Linux, especially for the VM part that needs a linux
     ```
 3. Now, from the root of this repository you can `nix develop` to enter the dev shell
 4. Run `just` will list all available commands
-5. `just container` will build the container
+5. `just container` will build the container (you need `docker`)
 6. `just ghcr <username>` will send it to ghcr.io
 7. `just vm` will boot the VM locally
 8. `just ssh-in` will connect you inside

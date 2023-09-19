@@ -1,3 +1,3 @@
-result/
+.direnv/
 result
 *.qcow2

@@ -2,6 +2,8 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
+    kubenix.url = "github:hall/kubenix";
+    kubenix.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs = inputs:
@@ -53,10 +55,29 @@
           packages.docker = dockerImage;
         }
       );
+      flakeKube = flake-utils.lib.eachSystem ["x86_64-linux"] (
+        system: let
+          pkgs = import nixpkgs {
+            inherit system;
+          };
+        in {
+          packages.kube =
+            (kubenix.evalModules.${system} {
+              module = {kubenix, ...}: {
+                imports = [kubenix.modules.k8s];
+                kubernetes.resources.pods.example.spec.containers.nginx.image = "nginx";
+              };
+            })
+            .config
+            .kubernetes
+            .result;
+        }
+      );
       flakeModules = {
         nixosModules.vmConfig = {
           pkgs,
           lib,
+          outputs,
           ...
         }: {
           fileSystems."/" = {
@@ -90,16 +111,18 @@
 
           systemd.services.startTutoSEDContainer = {
             description = "Launch our tutosed container image";
-            after = ["k3s.service"];
+            before = ["k3s.service"];
             wantedBy = ["multi-user.target"];
             script = ''
-              ${pkgs.k3s}/bin/k3s kubectl create deployment tutosed --image=ghcr.io/volodiapg/tutosed:latest
+              ${pkgs.k3s}/bin/k3s kubectl apply -f /etc/kubenix.json
             '';
             serviceConfig = {
               Type = "oneshot";
               RemainAfterExit = "yes";
             };
           };
+
+          environment.etc."kubenix.json".source = outputs.packages.${pkgs.system}.kube;
 
           system.stateVersion = "22.05"; # Do not change
         };
@@ -116,6 +139,7 @@
               "${nixpkgs}/nixos/modules/profiles/all-hardware.nix"
               outputs.nixosModules.vmConfig
             ];
+            specialArgs = {inherit outputs;};
           };
           vm = import "${nixpkgs}/nixos/lib/make-disk-image.nix" {
             inherit pkgs;
@@ -134,6 +158,7 @@
       [
         flakeDevEnv
         flakeDocker
+        flakeKube
         flakeModules
         flakeVM
       ];
