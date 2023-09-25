@@ -121,6 +121,7 @@
           systemd.services.startTutoSEDContainer = {
             description = "Launch our tutosed container image";
             after = ["k3s.service"];
+            wants = ["k3s.service"];
             wantedBy = ["multi-user.target"];
             script = ''
               ${pkgs.k3s}/bin/k3s kubectl apply -f /etc/namespaces.yaml
