@@ -41,3 +41,21 @@ ghcr user: container
 # connects inside the VM using SSH
 ssh-in:
     @$SSH_CMD
+
+faas-login:
+    #!/usr/bin/env bash
+    PASS=$($SSH_CMD kubectl get secret -n openfaas basic-auth -o jsonpath="{.data.basic-auth-password}" | base64 --decode)
+    echo $PASS | faas-cli login --password-stdin
+    echo "PASSWORD: $PASS"
+
+faas-pub: faas-login
+    cd {{justfile_directory()}}/functions && find . -maxdepth 1 -type f -name '*.yml'  -printf '%f\n' \
+        | xargs -I {} faas-cli publish -f {}
+
+faas-deploy: faas-login
+    cd {{justfile_directory()}}/functions && find . -maxdepth 1 -type f -name '*.yml'  -printf '%f\n' \
+        | xargs -I {} faas-cli deploy -f {}
+tun:
+    $SSH_CMD "k3s kubectl port-forward -n openfaas svc/gateway 8080:8080"&
+    $SSH_CMD -N -g -L "8080:127.0.0.1:8080"
+    wait

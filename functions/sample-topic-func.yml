@@ -1,0 +1,12 @@
+version: 1.0
+provider:
+  name: openfaas
+  gateway: http://127.0.0.1:8080
+functions:
+  sample-topic-func:
+    lang: go
+    handler: ./sample-topic-func
+    image: ghcr.io/volodiapg/sample-topic-func:latest
+    annotations:
+      topic: sample-topic
+

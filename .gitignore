@@ -1,3 +1,6 @@
 .direnv/
 result
 *.qcow2
+template
+build
+.secrets

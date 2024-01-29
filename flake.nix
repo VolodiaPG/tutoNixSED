@@ -26,37 +26,9 @@
               nixos-rebuild
               qemu
               sshpass
+              faas-cli
             ];
           };
-        }
-      );
-      flakeDocker = flake-utils.lib.eachSystem ["x86_64-linux"] (
-        system: let
-          pkgs = import nixpkgs {
-            inherit system;
-          };
-
-          dockerImage = pkgs.dockerTools.buildImage {
-            name = "tutosed";
-            tag = "latest";
-            copyToRoot = pkgs.buildEnv {
-              name = "image-root";
-              pathsToLink = [
-                "/bin"
-                "/"
-              ];
-              paths = with pkgs; [
-                busybox
-                parallel
-              ];
-            };
-
-            config = {
-              Entrypoint = ["sleep" "9999999"];
-            };
-          };
-        in {
-          packages.docker = dockerImage;
         }
       );
       flakeKube = flake-utils.lib.eachSystem ["x86_64-linux"] (
@@ -69,33 +41,34 @@
             (kubenix.evalModules.${system} {
               module = {kubenix, ...}: {
                 imports = [kubenix.modules.k8s kubenix.modules.helm];
-                  kubernetes.helm.releases.openfaas = {
-                    namespace = nixpkgs.lib.mkForce "openfaas";
-                    overrideNamespace = false;
-                    chart = pkgs.stdenvNoCC.mkDerivation {
-                      name = "openfaas";
-                      src = inputs.openfaas;
+                kubernetes.helm.releases.openfaas = {
+                  namespace = nixpkgs.lib.mkForce "openfaas";
+                  overrideNamespace = false;
+                  chart = pkgs.stdenvNoCC.mkDerivation {
+                    name = "openfaas";
+                    src = inputs.openfaas;
 
-                      buildCommand = ''
-                        ls $src
-                        cp -r $src/chart/openfaas/ $out
-                      '';
-                    };
+                    buildCommand = ''
+                      ls $src
+                      cp -r $src/chart/openfaas/ $out
+                    '';
                   };
-                  kubernetes.helm.releases.mqtt-connector = {
-                    namespace = nixpkgs.lib.mkForce "openfaas";
-                    overrideNamespace = false;
-                    chart = pkgs.stdenvNoCC.mkDerivation {
-                      name = "mqtt-connector";
-                      src = inputs.openfaas;
+                };
+                kubernetes.helm.releases.mqtt-connector = {
+                  namespace = nixpkgs.lib.mkForce "openfaas";
+                  overrideNamespace = false;
+                  chart = pkgs.stdenvNoCC.mkDerivation {
+                    name = "mqtt-connector";
+                    src = inputs.openfaas;
 
-                      buildCommand = ''
-                        ls $src
-                        cp -r $src/chart/mqtt-connector/ $out
-                      '';
-                    };
-                    values.broker= "tcp://10.0.2.15:1883";
+                    buildCommand = ''
+                      ls $src
+                      cp -r $src/chart/mqtt-connector/ $out
+                    '';
                   };
+                  values.broker = "tcp://10.0.2.15:1883";
+                  values.topic = "sample-topic";
+                };
               };
             })
             .config
@@ -144,19 +117,15 @@
 
             # Mosquitto is only listening on the local IP, traffic from outside is not
             # allowed.
-            listeners = [{
-              address = "0.0.0.0";
-              port = 1883;
-              settings.allow_anonymous = true;
-              # users = {
-              #   # No real authentication needed here, since the local network is
-              #   # trusted.
-              #   mosquitto = {
-              #     acl = [ "readwrite #" ];
-              #     password = "mosquitto";
-              #   };
-              # };
-            }];
+            listeners = [
+              {
+                address = "0.0.0.0";
+                port = 1883;
+                settings.allow_anonymous = true;
+                omitPasswordAuth = true;
+                acl = ["topic readwrite #" "pattern readwrite #"];
+              }
+            ];
           };
 
           environment.systemPackages = with pkgs; [
@@ -187,30 +156,30 @@
 
           environment.etc."kubenix.json".source = outputs.packages.${pkgs.system}.kube;
           environment.etc."namespaces.yaml".text = ''
-          apiVersion: v1
-          kind: Namespace
-          metadata:
-            name: openfaas
-            annotations:
-              linkerd.io/inject: enabled
-              config.linkerd.io/skip-inbound-ports: "4222"
-              config.linkerd.io/skip-outbound-ports: "4222"
-            labels:
-              role: openfaas-system
-              access: openfaas-system
-              istio-injection: enabled
-          ---
-          apiVersion: v1
-          kind: Namespace
-          metadata:
-            name: openfaas-fn
-            annotations:
-              linkerd.io/inject: enabled
-              config.linkerd.io/skip-inbound-ports: "4222"
-              config.linkerd.io/skip-outbound-ports: "4222"
-            labels:
-              istio-injection: enabled
-              role: openfaas-fn
+            apiVersion: v1
+            kind: Namespace
+            metadata:
+              name: openfaas
+              annotations:
+                linkerd.io/inject: enabled
+                config.linkerd.io/skip-inbound-ports: "4222"
+                config.linkerd.io/skip-outbound-ports: "4222"
+              labels:
+                role: openfaas-system
+                access: openfaas-system
+                istio-injection: enabled
+            ---
+            apiVersion: v1
+            kind: Namespace
+            metadata:
+              name: openfaas-fn
+              annotations:
+                linkerd.io/inject: enabled
+                config.linkerd.io/skip-inbound-ports: "4222"
+                config.linkerd.io/skip-outbound-ports: "4222"
+              labels:
+                istio-injection: enabled
+                role: openfaas-fn
           '';
 
           system.stateVersion = "22.05"; # Do not change
@@ -246,7 +215,6 @@
       nixpkgs.lib.foldl nixpkgs.lib.recursiveUpdate {}
       [
         flakeDevEnv
-        flakeDocker
         flakeKube
         flakeModules
         flakeVM

@@ -39,10 +39,21 @@ Each is in its variable that is then injected in the last bit of code:
 nixpkgs.lib.foldl nixpkgs.lib.recursiveUpdate {}
     [
     flakeDevEnv
-    flakeDocker
     flakeModules
     flakeVM
     ];
 ```
+
+# How to use Openfaas ?
+
+1. `just vm`
+2. `just tun`
+3. `just faas-login`
+4. Push a function with `just faas-pub` (consider changing the registry from what I set here)
+5. `just faas-deploy` deploys the function on k3s
+6. `just ssh-in` to get inside
+7. `mosquitto_pub -h localhost -t sample-topic -m "Hello World!"`
+
+> You can monitor the outputs using the shell alias when you are inside the vm (`j ssh-in`) by typing `k9`
 
 This part performs a deep merge of to generate the full ouputs of the flake (this is pretty useful). You can check all the outputs with `nix flake show`.
