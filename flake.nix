@@ -161,6 +161,7 @@
 
           environment.systemPackages = with pkgs; [
             k9s
+            mosquitto
           ];
 
           programs.bash.shellAliases = {
