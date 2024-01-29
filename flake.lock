@@ -73,11 +73,29 @@
         "type": "github"
       }
     },
+    "openfaas": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1697712907,
+        "narHash": "sha256-4k+mFylYxKSDaUSbw5uGf8smms+GFPZxZmmS9IqOIlc=",
+        "owner": "openfaas",
+        "repo": "faas-netes",
+        "rev": "30c8dad5a53d2a84b920a5deb94cefc91bb906a4",
+        "type": "github"
+      },
+      "original": {
+        "owner": "openfaas",
+        "ref": "refs/tags/0.17.2",
+        "repo": "faas-netes",
+        "type": "github"
+      }
+    },
     "root": {
       "inputs": {
         "flake-utils": "flake-utils",
         "kubenix": "kubenix",
-        "nixpkgs": "nixpkgs"
+        "nixpkgs": "nixpkgs",
+        "openfaas": "openfaas"
       }
     },
     "systems": {

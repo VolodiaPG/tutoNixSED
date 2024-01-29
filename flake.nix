@@ -4,6 +4,10 @@
     flake-utils.url = "github:numtide/flake-utils";
     kubenix.url = "github:hall/kubenix";
     kubenix.inputs.nixpkgs.follows = "nixpkgs";
+    openfaas = {
+      url = "github:openfaas/faas-netes?ref=refs/tags/0.17.2";
+      flake = false;
+    };
   };
 
   outputs = inputs:
@@ -65,16 +69,33 @@
             (kubenix.evalModules.${system} {
               module = {kubenix, ...}: {
                 imports = [kubenix.modules.k8s kubenix.modules.helm];
+                  kubernetes.helm.releases.openfaas = {
+                    namespace = nixpkgs.lib.mkForce "openfaas";
+                    overrideNamespace = false;
+                    chart = pkgs.stdenvNoCC.mkDerivation {
+                      name = "openfaas";
+                      src = inputs.openfaas;
 
-                kubernetes.resources.pods.example.spec.containers.nginx.image = "nginx";
-                kubernetes.helm.releases.openfaas = {
-                  chart = kubenix.lib.helm.fetch {
-                    repo = "https://openfaas.github.io/faas-netes/";
-                    chart = "openfaas";
-                    version = "14.1.9";
-                    sha256 = "sha256-KxZhrunv8DbOvFqw7p2t2Zrqm4urvFWCErsutqNUgiM=";
+                      buildCommand = ''
+                        ls $src
+                        cp -r $src/chart/openfaas/ $out
+                      '';
+                    };
                   };
-                };
+                  kubernetes.helm.releases.mqtt-connector = {
+                    namespace = nixpkgs.lib.mkForce "openfaas";
+                    overrideNamespace = false;
+                    chart = pkgs.stdenvNoCC.mkDerivation {
+                      name = "mqtt-connector";
+                      src = inputs.openfaas;
+
+                      buildCommand = ''
+                        ls $src
+                        cp -r $src/chart/mqtt-connector/ $out
+                      '';
+                    };
+                    values.broker= "tcp://10.0.2.15:1883";
+                  };
               };
             })
             .config
@@ -116,6 +137,36 @@
 
           services.k3s = {
             enable = true;
+          };
+
+          services.mosquitto = {
+            enable = true;
+
+            # Mosquitto is only listening on the local IP, traffic from outside is not
+            # allowed.
+            listeners = [{
+              address = "0.0.0.0";
+              port = 1883;
+              settings.allow_anonymous = true;
+              # users = {
+              #   # No real authentication needed here, since the local network is
+              #   # trusted.
+              #   mosquitto = {
+              #     acl = [ "readwrite #" ];
+              #     password = "mosquitto";
+              #   };
+              # };
+            }];
+          };
+
+          environment.systemPackages = with pkgs; [
+            k9s
+          ];
+
+          programs.bash.shellAliases = {
+            kubectl = "k3s kubectl";
+            k = "kubectl";
+            k9 = "k9s --kubeconfig /etc/rancher/k3s/k3s.yaml -A";
           };
 
           systemd.services.startTutoSEDContainer = {
