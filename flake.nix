@@ -68,6 +68,23 @@
                   };
                   values.broker = "tcp://10.0.2.15:1883";
                   values.topic = "sample-topic";
+                  values.clientID = "m1";
+                };
+                kubernetes.helm.releases.mqtt-connector2 = {
+                  namespace = nixpkgs.lib.mkForce "openfaas";
+                  overrideNamespace = false;
+                  chart = pkgs.stdenvNoCC.mkDerivation {
+                    name = "mqtt-connector";
+                    src = inputs.openfaas;
+
+                    buildCommand = ''
+                      ls $src
+                      cp -r $src/chart/mqtt-connector/ $out
+                    '';
+                  };
+                  values.broker = "tcp://10.0.2.15:1883";
+                  values.topic = "sample-topic-2";
+                  values.clientID = "m2";
                 };
               };
             })
