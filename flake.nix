@@ -55,7 +55,7 @@
           packages.docker = dockerImage;
         }
       );
-      flakeKube = flake-utils.lib.eachSystem ["x86_64-linux"] (
+      flakeKube = flake-utils.lib.eachDefaultSystem (
         system: let
           pkgs = import nixpkgs {
             inherit system;
@@ -135,45 +135,49 @@
 
           environment.etc."kubenix.json".source = outputs.packages.${pkgs.system}.kube;
           environment.etc."namespaces.yaml".text = ''
-          apiVersion: v1
-          kind: Namespace
-          metadata:
-            name: openfaas
-            annotations:
-              linkerd.io/inject: enabled
-              config.linkerd.io/skip-inbound-ports: "4222"
-              config.linkerd.io/skip-outbound-ports: "4222"
-            labels:
-              role: openfaas-system
-              access: openfaas-system
-              istio-injection: enabled
-          ---
-          apiVersion: v1
-          kind: Namespace
-          metadata:
-            name: openfaas-fn
-            annotations:
-              linkerd.io/inject: enabled
-              config.linkerd.io/skip-inbound-ports: "4222"
-              config.linkerd.io/skip-outbound-ports: "4222"
-            labels:
-              istio-injection: enabled
-              role: openfaas-fn
+            apiVersion: v1
+            kind: Namespace
+            metadata:
+              name: openfaas
+              annotations:
+                linkerd.io/inject: enabled
+                config.linkerd.io/skip-inbound-ports: "4222"
+                config.linkerd.io/skip-outbound-ports: "4222"
+              labels:
+                role: openfaas-system
+                access: openfaas-system
+                istio-injection: enabled
+            ---
+            apiVersion: v1
+            kind: Namespace
+            metadata:
+              name: openfaas-fn
+              annotations:
+                linkerd.io/inject: enabled
+                config.linkerd.io/skip-inbound-ports: "4222"
+                config.linkerd.io/skip-outbound-ports: "4222"
+              labels:
+                istio-injection: enabled
+                role: openfaas-fn
           '';
 
           system.stateVersion = "22.05"; # Do not change
         };
       };
-      flakeVM = flake-utils.lib.eachSystem ["x86_64-linux"] (
+      flakeVM = flake-utils.lib.eachDefaultSystem (
         system: let
+          linuxSystem = builtins.replaceStrings ["darwin"] ["linux"] system;
+
           pkgs = import nixpkgs {
-            inherit system;
+            system = linuxSystem;
+            # inherit system;
           };
           os = nixpkgs.lib.nixosSystem {
-            inherit system;
+            # inherit system;
+            system = linuxSystem;
             modules = [
-              "${nixpkgs}/nixos/modules/profiles/qemu-guest.nix"
-              "${nixpkgs}/nixos/modules/profiles/all-hardware.nix"
+              # "${nixpkgs}/nixos/modules/profiles/qemu-guest.nix"
+              # "${nixpkgs}/nixos/modules/profiles/all-hardware.nix"
               outputs.nixosModules.vmConfig
             ];
             specialArgs = {inherit outputs;};
@@ -182,7 +186,7 @@
             inherit pkgs;
             inherit (pkgs) lib;
             inherit (os) config;
-            memSize = 4096; # During build-phase, here, locally
+            # memSize = 4096; # During build-phase, here, locally
             additionalSpace = "2G"; # Space added after all the necessary
             format = "qcow2-compressed";
           };

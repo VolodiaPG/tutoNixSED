@@ -13,7 +13,7 @@ vm:
     cp $vm_path $temp
     chmod u+rwx $temp
 
-    qemu-kvm \
+    qemu-system-aarch64 \
         -cpu max \
         -name nixos \
         -m 4096 \
