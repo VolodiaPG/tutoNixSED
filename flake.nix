@@ -2,8 +2,10 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
-    kubenix.url = "github:hall/kubenix?ref=refs/tags/0.2.0";
-    kubenix.inputs.nixpkgs.follows = "nixpkgs";
+    kubenix = {
+      url = "github:hall/kubenix?ref=refs/tags/0.2.0";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     openfaas = {
       url = "github:openfaas/faas-netes?ref=refs/tags/0.17.2";
       flake = false;
@@ -39,50 +41,56 @@
             (kubenix.evalModules.${system} {
               module = {kubenix, ...}: {
                 imports = [kubenix.modules.k8s kubenix.modules.helm];
-                kubernetes.helm.releases.openfaas = {
-                  namespace = nixpkgs.lib.mkForce "openfaas";
-                  overrideNamespace = false;
-                  chart = pkgs.stdenvNoCC.mkDerivation {
-                    name = "openfaas";
-                    src = inputs.openfaas;
+                kubernetes.helm.releases = {
+                  openfaas = {
+                    namespace = nixpkgs.lib.mkForce "openfaas";
+                    overrideNamespace = false;
+                    chart = pkgs.stdenvNoCC.mkDerivation {
+                      name = "openfaas";
+                      src = inputs.openfaas;
 
-                    buildCommand = ''
-                      ls $src
-                      cp -r $src/chart/openfaas/ $out
-                    '';
+                      buildCommand = ''
+                        ls $src
+                        cp -r $src/chart/openfaas/ $out
+                      '';
+                    };
                   };
-                };
-                kubernetes.helm.releases.mqtt-connector = {
-                  namespace = nixpkgs.lib.mkForce "openfaas";
-                  overrideNamespace = false;
-                  chart = pkgs.stdenvNoCC.mkDerivation {
-                    name = "mqtt-connector";
-                    src = inputs.openfaas;
+                  mqtt-connector = {
+                    namespace = nixpkgs.lib.mkForce "openfaas";
+                    overrideNamespace = false;
+                    chart = pkgs.stdenvNoCC.mkDerivation {
+                      name = "mqtt-connector";
+                      src = inputs.openfaas;
 
-                    buildCommand = ''
-                      ls $src
-                      cp -r $src/chart/mqtt-connector/ $out
-                    '';
+                      buildCommand = ''
+                        ls $src
+                        cp -r $src/chart/mqtt-connector/ $out
+                      '';
+                    };
+                    values = {
+                      broker = "tcp://10.0.2.15:1883";
+                      topic = "sample-topic";
+                      clientID = "m1";
+                    };
                   };
-                  values.broker = "tcp://10.0.2.15:1883";
-                  values.topic = "sample-topic";
-                  values.clientID = "m1";
-                };
-                kubernetes.helm.releases.mqtt-connector2 = {
-                  namespace = nixpkgs.lib.mkForce "openfaas";
-                  overrideNamespace = false;
-                  chart = pkgs.stdenvNoCC.mkDerivation {
-                    name = "mqtt-connector";
-                    src = inputs.openfaas;
+                  mqtt-connector2 = {
+                    namespace = nixpkgs.lib.mkForce "openfaas";
+                    overrideNamespace = false;
+                    chart = pkgs.stdenvNoCC.mkDerivation {
+                      name = "mqtt-connector";
+                      src = inputs.openfaas;
 
-                    buildCommand = ''
-                      ls $src
-                      cp -r $src/chart/mqtt-connector/ $out
-                    '';
+                      buildCommand = ''
+                        ls $src
+                        cp -r $src/chart/mqtt-connector/ $out
+                      '';
+                    };
+                    values = {
+                      broker = "tcp://10.0.2.15:1883";
+                      topic = "sample-topic-2";
+                      clientID = "m2";
+                    };
                   };
-                  values.broker = "tcp://10.0.2.15:1883";
-                  values.topic = "sample-topic-2";
-                  values.clientID = "m2";
                 };
               };
             })
@@ -118,35 +126,32 @@
             password = "root";
           };
 
-          services.openssh = {
-            enable = true;
-            permitRootLogin = "yes";
+          services = {
+            openssh = {
+              enable = true;
+              permitRootLogin = "yes";
+            };
+
+            k3s = {
+              enable = true;
+            };
+
+            mosquitto = {
+              enable = true;
+
+              # Mosquitto is only listening on the local IP, traffic from outside is not
+              # allowed.
+              listeners = [
+                {
+                  address = "0.0.0.0";
+                  port = 1883;
+                  settings.allow_anonymous = true;
+                  omitPasswordAuth = true;
+                  acl = ["topic readwrite #" "pattern readwrite #"];
+                }
+              ];
+            };
           };
-
-          services.k3s = {
-            enable = true;
-          };
-
-          services.mosquitto = {
-            enable = true;
-
-            # Mosquitto is only listening on the local IP, traffic from outside is not
-            # allowed.
-            listeners = [
-              {
-                address = "0.0.0.0";
-                port = 1883;
-                settings.allow_anonymous = true;
-                omitPasswordAuth = true;
-                acl = ["topic readwrite #" "pattern readwrite #"];
-              }
-            ];
-          };
-
-          environment.systemPackages = with pkgs; [
-            k9s
-            mosquitto
-          ];
 
           programs.bash.shellAliases = {
             kubectl = "k3s kubectl";
@@ -169,33 +174,41 @@
             };
           };
 
-          environment.etc."kubenix.json".source = outputs.packages.${pkgs.system}.kube;
-          environment.etc."namespaces.yaml".text = ''
-            apiVersion: v1
-            kind: Namespace
-            metadata:
-              name: openfaas
-              annotations:
-                linkerd.io/inject: enabled
-                config.linkerd.io/skip-inbound-ports: "4222"
-                config.linkerd.io/skip-outbound-ports: "4222"
-              labels:
-                role: openfaas-system
-                access: openfaas-system
-                istio-injection: enabled
-            ---
-            apiVersion: v1
-            kind: Namespace
-            metadata:
-              name: openfaas-fn
-              annotations:
-                linkerd.io/inject: enabled
-                config.linkerd.io/skip-inbound-ports: "4222"
-                config.linkerd.io/skip-outbound-ports: "4222"
-              labels:
-                istio-injection: enabled
-                role: openfaas-fn
-          '';
+          environment = {
+            systemPackages = with pkgs; [
+              k9s
+              mosquitto
+            ];
+            etc = {
+              "kubenix.json".source = outputs.packages.${pkgs.system}.kube;
+              "namespaces.yaml".text = ''
+                apiVersion: v1
+                kind: Namespace
+                metadata:
+                  name: openfaas
+                  annotations:
+                    linkerd.io/inject: enabled
+                    config.linkerd.io/skip-inbound-ports: "4222"
+                    config.linkerd.io/skip-outbound-ports: "4222"
+                  labels:
+                    role: openfaas-system
+                    access: openfaas-system
+                    istio-injection: enabled
+                ---
+                apiVersion: v1
+                kind: Namespace
+                metadata:
+                  name: openfaas-fn
+                  annotations:
+                    linkerd.io/inject: enabled
+                    config.linkerd.io/skip-inbound-ports: "4222"
+                    config.linkerd.io/skip-outbound-ports: "4222"
+                  labels:
+                    istio-injection: enabled
+                    role: openfaas-fn
+              '';
+            };
+          };
 
           system.stateVersion = "22.05"; # Do not change
         };
