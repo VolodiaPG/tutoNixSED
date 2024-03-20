@@ -2,7 +2,7 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
-    kubenix.url = "github:hall/kubenix";
+    kubenix.url = "github:hall/kubenix?ref=refs/tags/0.2.0";
     kubenix.inputs.nixpkgs.follows = "nixpkgs";
     openfaas = {
       url = "github:openfaas/faas-netes?ref=refs/tags/0.17.2";
@@ -33,9 +33,7 @@
       );
       flakeKube = flake-utils.lib.eachSystem ["x86_64-linux"] (
         system: let
-          pkgs = import nixpkgs {
-            inherit system;
-          };
+          pkgs = nixpkgs.legacyPackages.${system};
         in {
           packages.kube =
             (kubenix.evalModules.${system} {
