@@ -59,3 +59,6 @@ tun:
     $SSH_CMD "k3s kubectl port-forward -n openfaas svc/gateway 8080:8080"&
     $SSH_CMD -N -g -L "8080:127.0.0.1:8080"
     wait
+mqtt:
+    mosquitto_pub -h localhost -t sample-topic -m "Hello World!"
+
