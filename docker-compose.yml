@@ -1,0 +1,13 @@
+services:
+  web:
+    image: nginx:stable-alpine-slim
+    volumes:
+     - ./nginx.conf:/etc/nginx/nginx.conf
+     - /certs:/certs:ro
+     - /var/log/nginx:/var/log/nginx
+    restart: always
+    cap_add:
+      - NET_ADMIN
+    network_mode: host
+    privileged: true
+

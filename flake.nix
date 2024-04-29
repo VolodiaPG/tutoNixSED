@@ -126,6 +126,12 @@
             password = "root";
           };
 
+          virtualisation.docker.enable = true;
+          networking.firewall = {
+            enable = true;
+            allowedTCPPorts = [9008 1883];
+          };
+
           services = {
             openssh = {
               enable = true;
@@ -174,10 +180,41 @@
             };
           };
 
+          systemd.services.installCerts = {
+            description = "Set up certs under /certs";
+            wantedBy = ["multi-user.target"];
+            script = let
+              sslCertificate = "${pkgs.path}/nixos/tests/common/acme/server/acme.test.cert.pem";
+              sslCertificateKey = "${pkgs.path}/nixos/tests/common/acme/server/acme.test.key.pem";
+            in ''
+              mkdir -p /certs
+              install -m 644 ${sslCertificate} /certs/cert.pem
+              install -m 644 ${sslCertificateKey} /certs/cert.key.pem
+            '';
+            serviceConfig = {
+              Type = "oneshot";
+              RemainAfterExit = "yes";
+            };
+          };
+          systemd.services.mountSharedDir = {
+            description = "Mount shared directory with the VM";
+            wantedBy = ["multi-user.target"];
+            script = ''
+              mkdir -p /mnt
+              ${pkgs.mount}/bin/mount -t 9p -o trans=virtio,version=9p2000.L host0 /mnt
+              ${pkgs.python3}/bin/python3 -m http.server 9000
+            '';
+            serviceConfig = {
+              Type = "oneshot";
+              RemainAfterExit = "yes";
+            };
+          };
+
           environment = {
             systemPackages = with pkgs; [
               k9s
               mosquitto
+              docker-compose
             ];
             etc = {
               "kubenix.json".source = outputs.packages.${pkgs.system}.kube;

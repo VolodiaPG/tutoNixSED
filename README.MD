@@ -2,6 +2,16 @@
 
 This demo focuses on producing docker images and VMs to illustrate the main steps towards a full scale deployment on Grid'5000.
 
+## Nginx HTTPS
+
+This version of the repo is focused on providing an accessible configuration for Nginx w/ SSL and HTTPS.
+The setup for nginx is in the `docker-compose.yml` file and the nginx config is in in the `nginx.conf` file.
+To start, well, `docker-compose up` and voilà.
+
+If you want to run the whole repo/demo: `just vm`, `just ssh-in`, `cd /mnt`, `docker-compose up` and then connect to `localhost:9008`.
+
+> The nginx configuration serves SSL on port 9008 and http on 80. A standard configurations would aim http on 80 and SSL on 443.
+
 ## Getting started
 
 This tutorial works best on Linux, especially for the VM part that needs a linux x86 system to be generated.
@@ -57,3 +67,4 @@ nixpkgs.lib.foldl nixpkgs.lib.recursiveUpdate {}
 > You can monitor the outputs using the shell alias when you are inside the vm (`j ssh-in`) by typing `k9`
 
 This part performs a deep merge of to generate the full ouputs of the flake (this is pretty useful). You can check all the outputs with `nix flake show`.
+

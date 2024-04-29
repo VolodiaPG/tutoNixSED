@@ -1,5 +1,5 @@
-export SSHPASS:="root"
-export SSH_CMD:="sshpass -e ssh -t -oUserKnownHostsFile=/dev/null -oStrictHostKeyChecking=no root@127.0.0.1 -p 2221"
+export SSHPASS := "root"
+export SSH_CMD := "sshpass -e ssh -t -oUserKnownHostsFile=/dev/null -oStrictHostKeyChecking=no root@127.0.0.1 -p 2221"
 
 _default:
     @just --list
@@ -19,8 +19,9 @@ vm:
         -m 4096 \
         -smp 4 \
         -drive cache=writeback,file="$temp",id=drive1,if=none,index=1,werror=report -device virtio-blk-pci,drive=drive1 \
-        -net nic,netdev=user.0,model=virtio -netdev user,id=user.0,hostfwd=tcp::2221-:22 \
+        -net nic,netdev=user.0,model=virtio -netdev user,id=user.0,hostfwd=tcp::2221-:22,hostfwd=tcp::9008-:9008 \
         -enable-kvm \
+        -virtfs local,path={{ justfile_directory() }},mount_tag=host0,security_model=passthrough,id=host0 \
         -nographic&
     wait
 
@@ -31,12 +32,12 @@ container:
 
 # Push an image to ghcr
 _push image user:
-    docker tag {{image}} ghcr.io/{{user}}/{{image}}
-    docker push ghcr.io/{{user}}/{{image}}
+    docker tag {{ image }} ghcr.io/{{ user }}/{{ image }}
+    docker push ghcr.io/{{ user }}/{{ image }}
 
 # Push docker images to ghcr
 ghcr user: container
-    just _push tutosed:latest {{user}}
+    just _push tutosed:latest {{ user }}
 
 # connects inside the VM using SSH
 ssh-in:
@@ -49,16 +50,17 @@ faas-login:
     echo "PASSWORD: $PASS"
 
 faas-pub: faas-login
-    cd {{justfile_directory()}}/functions && find . -maxdepth 1 -type f -name '*.yml'  -printf '%f\n' \
+    cd {{ justfile_directory() }}/functions && find . -maxdepth 1 -type f -name '*.yml'  -printf '%f\n' \
         | xargs -I {} faas-cli publish -f {}
 
 faas-deploy: faas-login
-    cd {{justfile_directory()}}/functions && find . -maxdepth 1 -type f -name '*.yml'  -printf '%f\n' \
+    cd {{ justfile_directory() }}/functions && find . -maxdepth 1 -type f -name '*.yml'  -printf '%f\n' \
         | xargs -I {} faas-cli deploy -f {}
+
 tun:
     $SSH_CMD "k3s kubectl port-forward -n openfaas svc/gateway 8080:8080"&
     $SSH_CMD -N -g -L "8080:127.0.0.1:8080"
     wait
+
 mqtt:
     mosquitto_pub -h localhost -t sample-topic -m "Hello World!"
-
