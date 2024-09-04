@@ -1,0 +1,6 @@
+{
+  user = "myce";
+  ghUsers = [
+    "volodiapg"
+  ];
+}

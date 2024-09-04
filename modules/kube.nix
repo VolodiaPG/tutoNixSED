@@ -2,85 +2,76 @@
 {
   self,
   lib,
+  inputs,
   ...
-}: {
-  perSystem = {
-    config,
-    self',
-    inputs',
-    pkgs,
-    lib,
-    ...
-  }: {
-    # Definitions like this are entirely equivalent to the ones
-    # you may have directly in flake.nix.
-    packages.kube =
-      (inputs'.kubenix.evalModules.${pkgs.system} {
-        module = {kubenix, ...}: {
-          imports = [kubenix.modules.k8s kubenix.modules.helm];
-          kubernetes.helm.releases = {
-            openfaas = {
-              namespace = lib.mkForce "openfaas";
-              overrideNamespace = false;
-              chart = pkgs.stdenvNoCC.mkDerivation {
-                name = "openfaas";
-                src = inputs'.openfaas;
+}: let
+  inherit (inputs) kubenix openfaas;
+in {
+  flake = {
+    nixosModules.kubernetes = {
+      pkgs,
+      kubenix,
+      ...
+    }: {
+      imports = [kubenix.modules.k8s kubenix.modules.helm];
+      kubernetes.helm.releases = {
+        openfaas = {
+          namespace = lib.mkForce "openfaas";
+          overrideNamespace = false;
+          chart = pkgs.stdenvNoCC.mkDerivation {
+            name = "openfaas";
+            src = openfaas;
 
-                buildCommand = ''
-                  ls $src
-                  cp -r $src/chart/openfaas/ $out
-                '';
-              };
-            };
-            mqtt-connector = {
-              namespace = lib.mkForce "openfaas";
-              overrideNamespace = false;
-              chart = pkgs.stdenvNoCC.mkDerivation {
-                name = "mqtt-connector";
-                src = inputs'.openfaas;
-
-                buildCommand = ''
-                  ls $src
-                  cp -r $src/chart/mqtt-connector/ $out
-                '';
-              };
-              values = {
-                broker = "tcp://10.0.2.15:1883";
-                topic = "sample-topic";
-                clientID = "m1";
-              };
-            };
-            mqtt-connector2 = {
-              namespace = lib.mkForce "openfaas";
-              overrideNamespace = false;
-              chart = pkgs.stdenvNoCC.mkDerivation {
-                name = "mqtt-connector";
-                src = inputs'.openfaas;
-
-                buildCommand = ''
-                  ls $src
-                  cp -r $src/chart/mqtt-connector/ $out
-                '';
-              };
-              values = {
-                broker = "tcp://10.0.2.15:1883";
-                topic = "sample-topic-2";
-                clientID = "m2";
-              };
-            };
+            buildCommand = ''
+              ls $src
+              cp -r $src/chart/openfaas/ $out
+            '';
           };
         };
-      })
-      .config
-      .kubernetes
-      .result;
-  };
-  flake = {
+        mqtt-connector = {
+          namespace = lib.mkForce "openfaas";
+          overrideNamespace = false;
+          chart = pkgs.stdenvNoCC.mkDerivation {
+            name = "mqtt-connector";
+            src = openfaas;
+
+            buildCommand = ''
+              ls $src
+              cp -r $src/chart/mqtt-connector/ $out
+            '';
+          };
+          values = {
+            broker = "tcp://10.0.2.15:1883";
+            topic = "sample-topic";
+            clientID = "m1";
+          };
+        };
+        mqtt-connector2 = {
+          namespace = lib.mkForce "openfaas";
+          overrideNamespace = false;
+          chart = pkgs.stdenvNoCC.mkDerivation {
+            name = "mqtt-connector";
+            src = openfaas;
+
+            buildCommand = ''
+              ls $src
+              cp -r $src/chart/mqtt-connector/ $out
+            '';
+          };
+          values = {
+            broker = "tcp://10.0.2.15:1883";
+            topic = "sample-topic-2";
+            clientID = "m2";
+          };
+        };
+      };
+    };
+
     nixosModules.kube = {pkgs, ...}: {
       programs.bash.shellAliases = {
         kubectl = "k3s kubectl";
-        k = "kubectl";
-        k9 = "k9s --kubeconfig /etc/rancher/k3s/k3s.yaml -A";
+        k = "sudo kubectl";
+        k9 = "sudo k9s --kubeconfig /etc/rancher/k3s/k3s.yaml -A";
       };
 
       systemd.services.startTutoSEDContainer = {
@@ -97,13 +88,7 @@
           RemainAfterExit = "yes";
         };
       };
-
-      environment = {
-        systemPackages = with pkgs; [
-          k9s
-          mosquitto
-        ];
-
+      services = {
         k3s = {
           enable = true;
         };
@@ -123,9 +108,21 @@
             }
           ];
         };
+      };
 
+      environment = {
+        systemPackages = with pkgs; [
+          k9s
+          mosquitto
+        ];
         etc = {
-          "kubenix.json".source = self.outputs.packages.${pkgs.system}.kube;
+          "kubenix.json".source =
+            (kubenix.evalModules.${pkgs.system} {
+              module = self.outputs.nixosModules.kubernetes;
+            })
+            .config
+            .kubernetes
+            .result;
           "namespaces.yaml".text = ''
             apiVersion: v1
             kind: Namespace
