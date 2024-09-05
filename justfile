@@ -58,4 +58,4 @@ vm:
     exec $vmpath/bin/run-* -nographic -cpu host -enable-kvm
 
 ssh:
-    ssh -o StrictHostKeychecking=no -oUserKnownHostsFile=/dev/null myce@127.0.0.1 -p 4444
+    ssh -o StrictHostKeychecking=no -o UserKnownHostsFile=/dev/null myce@127.0.0.1 -p 4444

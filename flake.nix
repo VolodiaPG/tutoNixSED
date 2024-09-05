@@ -1,7 +1,7 @@
 {
   inputs = {
     flake-parts.url = "github:hercules-ci/flake-parts";
-    srvos.url = "github:numtide/srvos";
+    srvos.url = "github:nix-community/srvos";
     # Use the version of nixpkgs that has been tested to work with SrvOS
     nixpkgs.follows = "srvos/nixpkgs";
     kubenix = {
@@ -10,6 +10,10 @@
     };
     openfaas = {
       url = "github:openfaas/faas-netes?ref=refs/tags/0.17.2";
+      flake = false;
+    };
+    ssh-volodiapg = {
+      url = "https://github.com/volodiapg.keys";
       flake = false;
     };
   };
@@ -21,7 +25,6 @@
       imports = [
         ./modules/devShell.nix
         ./modules/kube.nix
-        ./modules/cloud-init.nix
       ];
       systems = ["x86_64-linux"];
       perSystem = {
@@ -49,23 +52,31 @@
               "${inputs.nixpkgs}/nixos/modules/profiles/all-hardware.nix"
               inputs.self.outputs.nixosModules.base
               inputs.self.outputs.nixosModules.kube
-              inputs.self.outputs.nixosModules.cloud-init
               inputs.srvos.nixosModules.server
               inputs.srvos.nixosModules.mixins-terminfo
-              inputs.srvos.nixosModules.mixins-cloud-init
               inputs.srvos.nixosModules.mixins-systemd-boot
-              {
-                services.getty.autologinUser = "toto";
-                #services.getty.autologinUser =
-                #  cfg.user;
-                users.allowNoPasswordLogin = true;
-                users.users."toto" = {
+              ({lib, ...}: {
+                systemd.network = {
+                  enable = true;
+                  wait-online.anyInterface = true;
+                  networks = {
+                    "10-dhcp" = {
+                      matchConfig.Name = ["enp*" "wlp*"];
+                      networkConfig.DHCP = true;
+                    };
+                  };
+                };
+                networking.firewall.allowedUDPPorts = [67];
+                services.getty.autologinUser =
+                  cfg.user;
+                users.users.${cfg.user} = {
                   isNormalUser = true;
                   home = "/home/${cfg.user}";
-                  initialPassword = cfg.user; # Replace with your own password
                   extraGroups = ["wheel" "networkmanager"]; # Add the user to important groups
+                  openssh.authorizedKeys.keyFiles = [
+                    inputs.ssh-volodiapg
+                  ];
                 };
-
                 security.sudo.wheelNeedsPassword = false;
                 # Enable a basic firewall (optional)
                 networking.firewall.enable = true;
@@ -87,7 +98,7 @@
                     target = "/home/${cfg.user}/mycelium";
                   };
                 };
-              }
+              })
             ];
             specialArgs = {inherit (inputs.self) outputs;};
           };
@@ -106,15 +117,10 @@
             };
           };
 
-          #users.mutableUsers = false;
-          #users.users.root = {
-          #  isSystemUser = true;
-          #  password = "root";
-          #};
+          users.mutableUsers = false;
           services = {
             openssh = {
               enable = true;
-              permitRootLogin = "yes";
             };
           };
 
