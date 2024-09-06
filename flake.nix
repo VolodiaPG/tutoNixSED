@@ -23,8 +23,7 @@
   in
     flake-parts.lib.mkFlake {inherit inputs;} {
       imports = [
-        ./modules/devShell.nix
-        ./modules/kube.nix
+        ./flake-modules
       ];
       systems = ["x86_64-linux"];
       perSystem = {
@@ -44,87 +43,8 @@
         #};
       };
       flake = {
-        nixosConfigurationsFunction.os = {pwd}:
-          inputs.nixpkgs.lib.nixosSystem {
-            system = "x86_64-linux";
-            modules = [
-              "${inputs.nixpkgs}/nixos/modules/profiles/qemu-guest.nix"
-              "${inputs.nixpkgs}/nixos/modules/profiles/all-hardware.nix"
-              inputs.self.outputs.nixosModules.base
-              inputs.self.outputs.nixosModules.kube
-              inputs.srvos.nixosModules.server
-              inputs.srvos.nixosModules.mixins-terminfo
-              inputs.srvos.nixosModules.mixins-systemd-boot
-              ({lib, ...}: {
-                systemd.network = {
-                  enable = true;
-                  wait-online.anyInterface = true;
-                  networks = {
-                    "10-dhcp" = {
-                      matchConfig.Name = ["enp*" "wlp*"];
-                      networkConfig.DHCP = true;
-                    };
-                  };
-                };
-                networking.firewall.allowedUDPPorts = [67];
-                services.getty.autologinUser =
-                  cfg.user;
-                users.users.${cfg.user} = {
-                  isNormalUser = true;
-                  home = "/home/${cfg.user}";
-                  extraGroups = ["wheel" "networkmanager"]; # Add the user to important groups
-                  openssh.authorizedKeys.keyFiles = [
-                    inputs.ssh-volodiapg
-                  ];
-                };
-                security.sudo.wheelNeedsPassword = false;
-                # Enable a basic firewall (optional)
-                networking.firewall.enable = true;
-                networking.firewall.allowedTCPPorts = [22]; # Open SSH port
-
-                virtualisation.vmVariant.virtualisation = {
-                  forwardPorts = [
-                    {
-                      from = "host";
-                      host.port = 4444;
-                      guest.port = 22;
-                    }
-                  ];
-                  memorySize = 4096;
-                  cores = 4;
-                  diskSize = 10 * 1024;
-                  sharedDirectories.current = {
-                    source = "${pwd}";
-                    target = "/home/${cfg.user}/mycelium";
-                  };
-                };
-              })
-            ];
-            specialArgs = {inherit (inputs.self) outputs;};
-          };
-
-        nixosModules.base = {
-          fileSystems."/" = {
-            device = "/dev/disk/by-label/nixos";
-            fsType = "ext4";
-          };
-
-          boot = {
-            growPartition = true;
-            kernelParams = ["console=ttyS0"]; # "preempt=none"];
-            loader.grub = {
-              device = "/dev/vda";
-            };
-          };
-
-          users.mutableUsers = false;
-          services = {
-            openssh = {
-              enable = true;
-            };
-          };
-
-          system.stateVersion = "22.05"; # Do not change
+        _module.args = {
+          inherit cfg;
         };
       };
     };
