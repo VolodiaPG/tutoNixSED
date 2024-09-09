@@ -55,7 +55,8 @@
           modules
           ++ [
             "${inputs.nixpkgs}/nixos/modules/profiles/qemu-guest.nix"
-            {
+            ({pkgs, ...}: {
+              environment.systemPackages = [pkgs.just];
               virtualisation.vmVariant.virtualisation = {
                 forwardPorts = [
                   {
@@ -72,12 +73,12 @@
                   target = "/home/${cfg.user}/mycelium";
                 };
               };
-            }
+            })
           ];
         specialArgs = {inherit (inputs.self) outputs;};
       };
 
-    nixosModules.base = {
+    nixosModules.base = {lib, ...}: {
       fileSystems."/" = {
         device = "/dev/disk/by-label/nixos";
         fsType = "ext4";
@@ -88,6 +89,13 @@
         kernelParams = ["console=ttyS0"]; # "preempt=none"];
         loader.grub = {
           device = "/dev/vda";
+          configurationLimit = 5;
+        };
+        kernel.sysctl = {
+          "net.core.default_qdisc" = lib.mkForce "cake"; #fq_codel also works but is older, allows for fair bandwidth for each application running on this node
+          "net.ipv4.tcp_ecn" = 1;
+          "net.ipv4.tcp_sack" = 1;
+          "net.ipv4.tcp_dsack" = 1;
         };
       };
 

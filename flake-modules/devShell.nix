@@ -15,7 +15,6 @@
         just
         nixos-rebuild
         qemu
-        sshpass
         faas-cli
       ];
     };
