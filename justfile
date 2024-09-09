@@ -1,5 +1,4 @@
-export SSHPASS := "root"
-export SSH_CMD := "sshpass -e ssh -t -oUserKnownHostsFile=/dev/null -oStrictHostKeyChecking=no root@127.0.0.1 -p 2221"
+export SSH_CMD := "ssh -o StrictHostKeychecking=no -o UserKnownHostsFile=/dev/null myce@127.0.0.1 -p 4444"
 
 _default:
     @just --list
@@ -19,12 +18,12 @@ ghcr user: container
     just _push tutosed:latest {{ user }}
 
 # connects inside the VM using SSH
-ssh-in:
+ssh:
     @$SSH_CMD
 
 faas-login:
     #!/usr/bin/env bash
-    PASS=$($SSH_CMD kubectl get secret -n openfaas basic-auth -o jsonpath="{.data.basic-auth-password}" | base64 --decode)
+    PASS=$($SSH_CMD sudo kubectl get secret -n openfaas basic-auth -o jsonpath="{.data.basic-auth-password}" | base64 --decode)
     echo $PASS | faas-cli login --password-stdin
     echo "PASSWORD: $PASS"
 
@@ -37,7 +36,7 @@ faas-deploy: faas-login
         | xargs -I {} faas-cli deploy -f {}
 
 tun:
-    $SSH_CMD "k3s kubectl port-forward -n openfaas svc/gateway 8080:8080"&
+    $SSH_CMD "sudo k3s kubectl port-forward -n openfaas svc/gateway 8080:8080"&
     $SSH_CMD -N -g -L "8080:127.0.0.1:8080"
     wait
 
@@ -57,5 +56,3 @@ vm:
     rm *.qcow2
     exec $vmpath/bin/run-* -nographic -cpu host -enable-kvm
 
-ssh:
-    ssh -o StrictHostKeychecking=no -o UserKnownHostsFile=/dev/null myce@127.0.0.1 -p 4444
