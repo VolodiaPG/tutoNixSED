@@ -1,5 +1,20 @@
 export SSH_CMD := "ssh -o StrictHostKeychecking=no -o UserKnownHostsFile=/dev/null myce@127.0.0.1 -p 4444"
 
+# Detect system architecture
+SYSTEM := `case "$(uname -s)-$(uname -m)" in \
+    Linux-x86_64)  echo "x86_64-linux" ;; \
+    Darwin-arm64)  echo "aarch64-linux" ;; \
+    Darwin-x86_64) echo "x86_64-linux" ;; \
+    *)             echo "Unsupported system" && exit 1 ;; \
+esac`
+
+HOST_SYSTEM := `case "$(uname -s)-$(uname -m)" in \
+    Linux-x86_64)  echo "x86_64-linux" ;; \
+    Darwin-arm64)  echo "aarch64-darwin" ;; \
+    Darwin-x86_64) echo "x86_64-darwin" ;; \
+    *)             echo "Unsupported system" && exit 1 ;; \
+esac`
+
 _default:
     @just --list
 
@@ -29,7 +44,7 @@ faas-login:
 
 faas-pub: faas-login
     cd {{ justfile_directory() }}/functions && find . -maxdepth 1 -type f -name '*.yml'  -printf '%f\n' \
-        | xargs -I {} faas-cli publish -f {}
+        | xargs -I {} faas-cli publish -f {} --platforms linux/$(echo {{ SYSTEM }} | cut -d'-' -f1)
 
 faas-deploy: faas-login
     cd {{ justfile_directory() }}/functions && find . -maxdepth 1 -type f -name '*.yml'  -printf '%f\n' \
@@ -43,16 +58,20 @@ tun:
 mqtt:
     mosquitto_pub -h localhost -t sample-topic -m "Hello World!"
 
-vm:
+vm system=SYSTEM host_system=HOST_SYSTEM:
     #!/usr/bin/env bash
-    set -xe
+    set -e
+    echo "Using system: {{ system }} on host {{ host_system }}"
     vmpath=$(nix build --impure --print-out-paths --expr "
     let
     self = builtins.getFlake ''path://{{ justfile_directory() }}'';
-      vm = self.nixosConfigurationsFunction.os {pwd=''{{ justfile_directory() }}'';};
+      vm = self.nixosConfigurationFunctions.vm {system=\"{{ system }}\"; hostPlatform=\"{{ host_system }}\"; pwd=''{{ justfile_directory() }}'';};
       install = vm.config.system.build.vm;
     in
     install" )
-    rm *.qcow2
-    exec $vmpath/bin/run-* -nographic -cpu host -enable-kvm
-
+    rm *.qcow2 || true
+    if [[ "$(uname -s)" == "Linux" ]]; then
+        exec $vmpath/bin/run-* -nographic -cpu host -enable-kvm
+    else
+        exec $vmpath/bin/run-* -nographic -cpu host
+    fi

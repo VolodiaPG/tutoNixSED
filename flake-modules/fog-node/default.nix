@@ -1,56 +1,26 @@
-{inputs, ...}: {
+{inputs, ...}: let
+  modules = [
+    "${inputs.nixpkgs}/nixos/modules/profiles/all-hardware.nix"
+    inputs.self.outputs.nixosModules.base
+    inputs.self.outputs.nixosModules.kube
+    inputs.srvos.nixosModules.server
+    inputs.srvos.nixosModules.mixins-systemd-boot
+    inputs.srvos.nixosModules.mixins-nix-experimental
+  ];
+in {
   imports = [
     ./kube.nix
   ];
 
   flake = {cfg, ...}: let
-    modules = [
-      "${inputs.nixpkgs}/nixos/modules/profiles/all-hardware.nix"
-      inputs.self.outputs.nixosModules.base
-      inputs.self.outputs.nixosModules.kube
-      inputs.srvos.nixosModules.server
-      inputs.srvos.nixosModules.mixins-terminfo
-      inputs.srvos.nixosModules.mixins-systemd-boot
-      inputs.srvos.nixosModules.mixins-nix-experimental
-      ({pkgs, ...}: {
-        boot.kernelPackages = pkgs.linuxPackages_latest;
-        systemd.network = {
-          enable = true;
-          wait-online.anyInterface = true;
-          networks = {
-            "10-dhcp" = {
-              matchConfig.Name = ["enp*" "wlp*"];
-              networkConfig.DHCP = true;
-            };
-          };
-        };
-        networking.firewall.allowedUDPPorts = [67];
-        services.getty.autologinUser =
-          cfg.user;
-        users.users.${cfg.user} = {
-          isNormalUser = true;
-          home = "/home/${cfg.user}";
-          extraGroups = ["wheel" "networkmanager"]; # Add the user to important groups
-          openssh.authorizedKeys.keyFiles = [
-            inputs.ssh-volodiapg
-          ];
-        };
-        security.sudo.wheelNeedsPassword = false;
-        # Enable a basic firewall (optional)
-        networking.firewall.enable = true;
-        networking.firewall.allowedTCPPorts = [22]; # Open SSH port
-      })
-    ];
   in {
-    nixosConfigurations.base = inputs.nixpkgs.lib.nixosSystem {
-      system = "x86_64-linux";
-      inherit modules;
-      specialArgs = {inherit (inputs.self) outputs;};
-    };
-
-    nixosConfigurationsFunction.os = {pwd}:
+    nixosConfigurationFunctions.vm = {
+      system,
+      hostPlatform,
+      pwd,
+    }:
       inputs.nixpkgs.lib.nixosSystem {
-        system = "x86_64-linux";
+        inherit system;
         modules =
           modules
           ++ [
@@ -58,6 +28,7 @@
             ({pkgs, ...}: {
               environment.systemPackages = [pkgs.just];
               virtualisation.vmVariant.virtualisation = {
+                host.pkgs = inputs.nixpkgs.legacyPackages.${hostPlatform};
                 forwardPorts = [
                   {
                     from = "host";
@@ -78,7 +49,43 @@
         specialArgs = {inherit (inputs.self) outputs;};
       };
 
-    nixosModules.base = {lib, ...}: {
+    nixosConfigurations.base = inputs.nixpkgs.lib.nixosSystem {
+      system = "x86_64-linux";
+      inherit modules;
+      specialArgs = {inherit (inputs.self) outputs;};
+    };
+
+    nixosModules.base = {
+      pkgs,
+      lib,
+      ...
+    }: {
+      boot.kernelPackages = pkgs.linuxPackages_latest;
+      systemd.network = {
+        enable = true;
+        wait-online.anyInterface = true;
+        networks = {
+          "10-dhcp" = {
+            matchConfig.Name = ["enp*" "wlp*"];
+            networkConfig.DHCP = true;
+          };
+        };
+      };
+      networking.firewall.allowedUDPPorts = [67];
+      services.getty.autologinUser =
+        cfg.user;
+      users.users.${cfg.user} = {
+        isNormalUser = true;
+        home = "/home/${cfg.user}";
+        extraGroups = ["wheel" "networkmanager"]; # Add the user to important groups
+        openssh.authorizedKeys.keyFiles = [
+          inputs.ssh-volodiapg
+        ];
+      };
+      security.sudo.wheelNeedsPassword = false;
+      # Enable a basic firewall (optional)
+      networking.firewall.enable = true;
+      networking.firewall.allowedTCPPorts = [22]; # Open SSH port
       fileSystems."/" = {
         device = "/dev/disk/by-label/nixos";
         fsType = "ext4";
