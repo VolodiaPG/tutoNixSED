@@ -57,11 +57,11 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1727015784,
-        "narHash": "sha256-HKQ/c55xpmSkCWwuICbbDbY6LiD4mK0K/VTCF8tJsMw=",
+        "lastModified": 1727007817,
+        "narHash": "sha256-6yxYYcMACk0r4/DIPcyIpgwowRPMToFJIFN1XfF5NoQ=",
         "owner": "volodiapg",
         "repo": "k0s-nix",
-        "rev": "633a6cf600bd609948848596137f47f1bfbbd7c2",
+        "rev": "17347785a7b2d8f4793bc17f7fb2511e26d9fc46",
         "type": "github"
       },
       "original": {
