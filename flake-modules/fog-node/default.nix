@@ -6,6 +6,7 @@
     inputs.srvos.nixosModules.server
     inputs.srvos.nixosModules.mixins-systemd-boot
     inputs.srvos.nixosModules.mixins-nix-experimental
+    inputs.k0s-nix.nixosModules.default
   ];
 in {
   imports = [
@@ -26,6 +27,10 @@ in {
           ++ [
             "${inputs.nixpkgs}/nixos/modules/profiles/qemu-guest.nix"
             ({pkgs, ...}: {
+              nixpkgs.overlays = [
+                inputs.k0s-nix.overlays.default
+              ];
+
               environment.systemPackages = [pkgs.just];
               virtualisation.vmVariant.virtualisation = {
                 host.pkgs = inputs.nixpkgs.legacyPackages.${hostPlatform};
@@ -35,6 +40,11 @@ in {
                     host.port = 4444;
                     guest.port = 22;
                   }
+                  # {
+                  #   from = "host";
+                  #   host.port = 5000;
+                  #   guest.port = 5000;
+                  # }
                 ];
                 memorySize = 4096;
                 cores = 4;
@@ -54,13 +64,32 @@ in {
       inherit modules;
       specialArgs = {inherit (inputs.self) outputs;};
     };
+    # nixosModules.dockerRegistry = { config, pkgs, ... }: {
+    #   virtualisation.docker.enable = true;
+    #   services.dockerRegistry = {
+    #     enable = true;
+    #     port = 5000;
+    #     extraConfig = {
+    #       storage = {
+    #         filesystem = {
+    #           rootdirectory = "/var/lib/docker-registry";
+    #         };
+    #       };
+    #       http = {
+    #         addr = "0.0.0.0:5000";
+    #       };
+    #     };
+    #   };
+    #   networking.firewall.allowedTCPPorts = [ 5000 ];
+    #   systemd.services.docker-registry.after = [ "network.target" ];
+    # };
 
     nixosModules.base = {
       pkgs,
       lib,
       ...
     }: {
-      boot.kernelPackages = pkgs.linuxPackages_latest;
+      # boot.kernelPackages = pkgs.linuxPackages_latest;
       systemd.network = {
         enable = true;
         wait-online.anyInterface = true;

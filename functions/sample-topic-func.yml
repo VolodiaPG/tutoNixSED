@@ -6,7 +6,7 @@ functions:
   sample-topic-func:
     lang: go
     handler: ./sample-topic-func
-    image: ghcr.io/volodiapg/sample-topic-func:latest
+    image: 127.0.0.1:5000/sample-topic-func:latest
     annotations:
       topic: sample-topic
 

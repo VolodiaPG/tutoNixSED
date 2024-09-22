@@ -18,20 +18,6 @@ esac`
 _default:
     @just --list
 
-# Build the project as a docker image
-container:
-    nix build .#docker
-    docker load < result
-
-# Push an image to ghcr
-_push image user:
-    docker tag {{ image }} ghcr.io/{{ user }}/{{ image }}
-    docker push ghcr.io/{{ user }}/{{ image }}
-
-# Push docker images to ghcr
-ghcr user: container
-    just _push tutosed:latest {{ user }}
-
 # connects inside the VM using SSH
 ssh:
     @$SSH_CMD
@@ -69,6 +55,7 @@ vm system=SYSTEM host_system=HOST_SYSTEM:
       install = vm.config.system.build.vm;
     in
     install" )
+    echo "VM path: $vmpath"
     rm *.qcow2 || true
     if [[ "$(uname -s)" == "Linux" ]]; then
         exec $vmpath/bin/run-* -nographic -cpu host -enable-kvm
