@@ -6,7 +6,7 @@ functions:
   sample-topic-func:
     lang: go
     handler: ./sample-topic-func
-    image: ghcr.io/volodiapg/sample-topic-func:latest
+    image: localhost:5000/sample-topic-func:latest  # Updated to VM's registry
     annotations:
       topic: sample-topic
 
