@@ -91,6 +91,9 @@ in {
       services = {
         k3s = {
           enable = true;
+          extraFlags = [
+            "--disable traefik,local-storage,servicelb,metrics-server"
+          ];
         };
 
         mosquitto = {
