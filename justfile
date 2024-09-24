@@ -1,5 +1,6 @@
 # SSH command with default options for connecting to the VM
-export SSH_CMD := "ssh -o StrictHostKeychecking=no -o UserKnownHostsFile=/dev/null myce@127.0.0.1 -p 4444"
+export SSHPASS:="myce"
+export SSH_CMD := "sshpass -e ssh -t -oUserKnownHostsFile=/dev/null -oStrictHostKeyChecking=no myce@127.0.0.1 -p 4444"
 
 # Registry for storing images temporarily
 REGISTRY := env_var_or_default('REGISTRY', "ttl.sh/" + `whoami` + "-" + `hostname`)
@@ -12,7 +13,7 @@ _default:
 
 # connects inside the VM using SSH
 ssh:
-    @$SSH_CMD
+    @{{SSH_CMD}}
 
 # Log in to OpenFaaS
 faas-login:

@@ -83,9 +83,7 @@ in {
         isNormalUser = true;
         home = "/home/${cfg.user}";
         extraGroups = ["wheel" "networkmanager"]; # Add the user to important groups
-        openssh.authorizedKeys.keyFiles = [
-          inputs.ssh-volodiapg
-        ];
+        password = "myce";
       };
       security.sudo.wheelNeedsPassword = false;
       # Enable a basic firewall (optional)
@@ -115,6 +113,7 @@ in {
       services = {
         openssh = {
           enable = true;
+          passwordAuthentication = lib.mkForce true;
         };
       };
 

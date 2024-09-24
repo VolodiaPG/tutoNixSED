@@ -146,8 +146,7 @@
           "nixpkgs"
         ],
         "openfaas": "openfaas",
-        "srvos": "srvos",
-        "ssh-volodiapg": "ssh-volodiapg"
+        "srvos": "srvos"
       }
     },
     "srvos": {
@@ -166,18 +165,6 @@
         "owner": "nix-community",
         "repo": "srvos",
         "type": "github"
-      }
-    },
-    "ssh-volodiapg": {
-      "flake": false,
-      "locked": {
-        "narHash": "sha256-JtNUKa2pGZue7ImEm95WIYLZb/mQitfkwlyYgi6V220=",
-        "type": "file",
-        "url": "https://github.com/volodiapg.keys"
-      },
-      "original": {
-        "type": "file",
-        "url": "https://github.com/volodiapg.keys"
       }
     },
     "systems": {

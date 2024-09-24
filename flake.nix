@@ -12,10 +12,6 @@
       url = "github:openfaas/faas-netes?ref=refs/tags/0.17.2";
       flake = false;
     };
-    ssh-volodiapg = {
-      url = "https://github.com/volodiapg.keys";
-      flake = false;
-    };
   };
 
   outputs = inputs @ {flake-parts, ...}: let
@@ -33,14 +29,6 @@
         ...
       }: {
         formatter = pkgs.alejandra;
-        #packages.disk = import "${inputs'.nixpkgs}/nixos/lib/make-disk-image.nix" {
-        #  inherit pkgs;
-        #  inherit (pkgs) lib;
-        #  inherit (self'.outputs.nixosModules.os) config;
-        #  memSize = 4096; # During build-phase, here, locally
-        #  additionalSpace = "2G"; # Space added after all the necessary
-        #  format = "qcow2-compressed";
-        #};
       };
       flake = {
         _module.args = {
