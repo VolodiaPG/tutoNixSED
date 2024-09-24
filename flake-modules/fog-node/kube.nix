@@ -108,13 +108,6 @@ in {
             }
           ];
         };
-
-        dockerRegistry = {
-          enable = true;
-          listenAddress = "0.0.0.0";
-          port = 5000;
-          openFirewall = true;
-        };
       };
 
       environment = {
@@ -155,15 +148,6 @@ in {
               labels:
                 istio-injection: enabled
                 role: openfaas-fn
-            ---
-            apiVersion: v1
-            kind: Secret
-            metadata:
-              name: regcred
-              namespace: openfaas-fn
-            data:
-              .dockerconfigjson: <base64-encoded-docker-config>
-            type: kubernetes.io/dockerconfigjson
           '';
         };
       };

@@ -35,6 +35,11 @@ in {
                     host.port = 4444;
                     guest.port = 22;
                   }
+                  {
+                    from = "host";
+                    host.port = 5000;
+                    guest.port = 5000;
+                  }
                 ];
                 memorySize = 4096;
                 cores = 4;
