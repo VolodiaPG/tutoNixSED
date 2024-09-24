@@ -19,7 +19,7 @@ ssh:
 faas-login:
     #!/usr/bin/env bash
     PASS=$($SSH_CMD sudo kubectl get secret -n openfaas basic-auth -o jsonpath="{.data.basic-auth-password}" | base64 --decode)
-    echo $PASS | faas-cli login --password-stdin
+    echo $PASS | faas-cli login --password-stdin --gateway http://127.0.0.1:31112
     echo "PASSWORD: $PASS"
 
 # Publish OpenFaaS functions using the registry variables and modify the function file
@@ -40,15 +40,9 @@ faas-pub-single file:
     faas-cli publish -f "{{file}}"
     faas-cli deploy -f "{{file}}"
 
-# Set up port forwarding for OpenFaaS gateway
-tun:
-    $SSH_CMD "sudo k3s kubectl port-forward -n openfaas svc/gateway 8080:8080"&
-    $SSH_CMD -N -g -L "8080:127.0.0.1:8080"
-    wait
-
 # Publish a test message to MQTT broker (run this command from within the VM)
 mqtt:
-    mosquitto_pub -h localhost -t sample-topic -m "Hello World!"
+    {{SSH_CMD}} 'mosquitto_pub -h localhost -t sample-topic -m "Hello World!"'
 
 # Build and run the VM
 vm:

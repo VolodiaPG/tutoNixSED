@@ -37,13 +37,13 @@ in {
                   }
                   {
                     from = "host";
-                    host.port = 5000;
-                    guest.port = 5000;
+                    host.port = 31112;
+                    guest.port = 31112;
                   }
                 ];
                 memorySize = 4096;
                 cores = 4;
-                diskSize = 10 * 1024;
+                diskSize = 5 * 1024;
                 sharedDirectories.current = {
                   source = "${pwd}";
                   target = "/home/${cfg.user}/mycelium";

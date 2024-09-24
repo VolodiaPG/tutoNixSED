@@ -1,37 +1,26 @@
-# Introduction to Nix
+# Introduction to Mycelium
 
-This demo focuses on producing docker images and VMs to illustrate the main steps towards a full scale deployment on Grid'5000.
+This demo focuses on running the minimal stack required to emulate the Mycelium project.
 
-## Getting started
+## Getting started with Mycelium
 
-This tutorial works best on Linux, especially for the VM part that needs a linux x86 system to be generated.
+This tutorial works best on Linux, especially for the VM part that needs a linux x86 system to be generated (Macos Intel series should work as well, but M-series Macs are not supported due to [an unidentifed bug](https://github.com/NixOS/nixpkgs/issues/295363)).
 
-1. Install nix: https://nixos.org/download#download-nix
-2. Append to /etc/nix/nix.conf:
-    ```
-    extra-experimental-features = nix-command flakes
-    max-jobs = auto
-    cores = 0
-    log-lines = 50
-    ```
-3. Now, from the root of this repository you can `nix develop` to enter the dev shell
-4. Run `just` will list all available commands
-7. `just vm` will boot the VM locally
-8. `just ssh` will connect you inside
-10. See it running on k3s with `k9`
+### Prerequisites
 
-Enjoy
+1. Have [nix](https://nixos.org/download#download-nix) installed
+2. Have [docker](https://docs.docker.com/engine/install) installed
 
-# How to use Openfaas ?
+### Instructions
 
-1. `just vm`
-2. `just tun`
-3. `just faas-login`
-4. Push a function with `just faas-pub` (consider changing the registry from what I set here)
-5. `just faas-deploy` deploys the function on k3s
-6. `just ssh` to get inside
-7. `mosquitto_pub -h localhost -t sample-topic -m "Hello World!"`
+1. Now, from the root of this repository you can `nix develop` to enter the dev shell
+3. Run `just` will list all available commands
+4. `just vm` will boot the VM locally and connect you as the `myce` user, password is `myce`
+5. `just ssh` will connect you inside from another terminal using ssh
+6. See OpenFaas and MQTT Connectors running on k3s with `k9`, to quit, type `:q`
+7. Add the `functions/sample-topic-func` by doing `just faas-pub`. The command will build the function, push it to [ttl.sh](https://ttl.sh) and deploy it on OpenFaas. The image is only stored for a limited time on ttl.sh.
+8. Check that everything is running with `k9`
+9. In the VM, run `just mqtt` to publish a message to mosquitto, the MQTT broker inside the VM.
+10. Check that the message is received by the MQTT connector with `k9` by inspecting the logs of the function
 
-> You can monitor the outputs using the shell alias when you are inside the vm (`j ssh-in`) by typing `k9`
-
-This part performs a deep merge of to generate the full ouputs of the flake (this is pretty useful). You can check all the outputs with `nix flake show`.
+Enjoy!
