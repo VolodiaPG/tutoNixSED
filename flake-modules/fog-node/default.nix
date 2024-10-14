@@ -26,8 +26,10 @@ in {
           ++ [
             "${inputs.nixpkgs}/nixos/modules/profiles/qemu-guest.nix"
             ({pkgs, ...}: {
-              environment.systemPackages = [pkgs.just];
-              virtualisation.vmVariant.virtualisation = {
+              environment.systemPackages = with pkgs; [just faas-cli];
+              virtualisation = {
+                docker.enable = true;
+                vmVariant.virtualisation = {
                 host.pkgs = inputs.nixpkgs.legacyPackages.${hostPlatform};
                 forwardPorts = [
                   {
@@ -47,6 +49,7 @@ in {
                 sharedDirectories.current = {
                   source = "${pwd}";
                   target = "/home/${cfg.user}/mycelium";
+                  };
                 };
               };
             })
@@ -82,7 +85,7 @@ in {
       users.users.${cfg.user} = {
         isNormalUser = true;
         home = "/home/${cfg.user}";
-        extraGroups = ["wheel" "networkmanager"]; # Add the user to important groups
+        extraGroups = ["wheel" "networkmanager" "docker"]; # Add the user to important groups
         password = "myce";
       };
       security.sudo.wheelNeedsPassword = false;
